@@ -60,7 +60,7 @@ $posts = getPosts($conn);
         <ul>
             <?php foreach ($posts as $post): ?>
                 <li>
-                    <h3><?php echo htmlspecialchars($post['title']); ?></h3>
+                    <h3><a href="post.php?postid=<?php echo $post['postid']; ?>"><?php echo htmlspecialchars($post['title']); ?></a></h3>
                     <p><?php echo htmlspecialchars($post['body']); ?></p>
                     <p><small>Posted by <?php echo htmlspecialchars($post['username']); ?> on <?php echo $post['date_created']; ?></small></p>
                 </li>
