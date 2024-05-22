@@ -29,28 +29,23 @@ function deletePost($postid, $userid, $conn) {
     return $stmt->execute();
 }
 
-// Function to toggle like/unlike a post
 function toggleLike($postid, $userid, $conn) {
-    // Check if the user has already liked the post
     $stmt = $conn->prepare("SELECT * FROM post_likes WHERE postid = ? AND userid = ?");
     $stmt->bind_param('ii', $postid, $userid);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows == 0) {
-        // If the user has not liked the post, insert a new like
         $stmt = $conn->prepare("INSERT INTO post_likes (postid, userid) VALUES (?, ?)");
         $stmt->bind_param('ii', $postid, $userid);
         return $stmt->execute();
     } else {
-        // If the user has already liked the post, remove the like
         $stmt = $conn->prepare("DELETE FROM post_likes WHERE postid = ? AND userid = ?");
         $stmt->bind_param('ii', $postid, $userid);
         return $stmt->execute();
     }
 }
 
-// Function to get the number of likes for a post
 function getLikes($postid, $conn) {
     $stmt = $conn->prepare("SELECT COUNT(*) as like_count FROM post_likes WHERE postid = ?");
     $stmt->bind_param('i', $postid);
@@ -123,8 +118,7 @@ $posts = getPosts($conn);
         }
 
         a {
-            color
-            : #007BFF;
+            color: #007BFF;
             text-decoration: none;
             display: inline-block;
             margin-bottom: 20px;
@@ -217,6 +211,30 @@ $posts = getPosts($conn);
         .delete-btn:hover {
             background-color: #c82333;
         }
+
+        .like-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background-color: #007BFF;
+            color: #fff;
+            padding: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .like-btn svg {
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+        }
+
+        .like-btn:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -244,7 +262,10 @@ $posts = getPosts($conn);
                         <p><small>Likes: <?php echo getLikes($post['postid'], $conn); ?></small></p>
                         <form action="" method="post">
                             <input type="hidden" name="like_postid" value="<?php echo $post['postid']; ?>">
-                            <button type="submit">
+                            <button class="like-btn" type="submit">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                </svg>
                                 <?php
                                 $stmt = $conn->prepare("SELECT * FROM post_likes WHERE postid = ? AND userid = ?");
                                 $stmt->bind_param('ii', $post['postid'], $_SESSION['userid']);
