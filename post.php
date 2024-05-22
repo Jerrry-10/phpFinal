@@ -47,6 +47,37 @@ function deleteComment($commentid, $userid, $conn) {
     return $stmt->execute();
 }
 
+// Function to add or remove a like from a post
+function toggleLike($postid, $userid, $conn) {
+    // Check if the user has already liked the post
+    $stmt = $conn->prepare("SELECT * FROM post_likes WHERE postid = ? AND userid = ?");
+    $stmt->bind_param('ii', $postid, $userid);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows == 0) {
+        // If the user has not liked the post, insert a new like
+        $stmt = $conn->prepare("INSERT INTO post_likes (postid, userid) VALUES (?, ?)");
+        $stmt->bind_param('ii', $postid, $userid);
+        return $stmt->execute();
+    } else {
+        // If the user has already liked the post, remove the like
+        $stmt = $conn->prepare("DELETE FROM post_likes WHERE postid = ? AND userid = ?");
+        $stmt->bind_param('ii', $postid, $userid);
+        return $stmt->execute();
+    }
+}
+
+// Function to get the number of likes for a post
+function getLikes($postid, $conn) {
+    $stmt = $conn->prepare("SELECT COUNT(*) as like_count FROM post_likes WHERE postid = ?");
+    $stmt->bind_param('i', $postid);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    return $row['like_count'];
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['comment_body'])) {
     $body = $_POST['comment_body'];
     $userid = $_SESSION['userid'];
@@ -60,6 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_commentid'])) {
     $userid = $_SESSION['userid'];
     if (!deleteComment($commentid, $userid, $conn)) {
         die("Error deleting comment: " . $conn->error);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['like_postid'])) {
+    $postid = $_POST['like_postid'];
+    $userid = $_SESSION['userid'];
+    if (!toggleLike($postid, $userid, $conn)) {
+        echo "Error toggling like: " . $conn->error;
     }
 }
 
@@ -197,6 +236,19 @@ $comments = getComments($postid, $conn);
     <h1><?php echo htmlspecialchars($post['title']); ?></h1>
     <p><?php echo htmlspecialchars($post['body']); ?></p>
     <p><small>Posted by <?php echo htmlspecialchars($post['username']); ?> on <?php echo $post['date_created']; ?></small></p>
+    <p><small>Likes: <?php echo getLikes($post['postid'], $conn); ?></small></p>
+    <form action="" method="post">
+        <input type="hidden" name="like_postid" value="<?php echo $post['postid']; ?>">
+        <button type="submit">
+            <?php
+            $stmt = $conn->prepare("SELECT * FROM post_likes WHERE postid = ? AND userid = ?");
+            $stmt->bind_param('ii', $post['postid'], $_SESSION['userid']);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            echo ($result->num_rows == 0) ? 'Like' : 'Unlike';
+            ?>
+        </button>
+    </form>
     <a href="homepage.php">Back to Homepage</a>
 
     <h2>Comments</h2>

@@ -29,6 +29,37 @@ function deletePost($postid, $userid, $conn) {
     return $stmt->execute();
 }
 
+// Function to toggle like/unlike a post
+function toggleLike($postid, $userid, $conn) {
+    // Check if the user has already liked the post
+    $stmt = $conn->prepare("SELECT * FROM post_likes WHERE postid = ? AND userid = ?");
+    $stmt->bind_param('ii', $postid, $userid);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows == 0) {
+        // If the user has not liked the post, insert a new like
+        $stmt = $conn->prepare("INSERT INTO post_likes (postid, userid) VALUES (?, ?)");
+        $stmt->bind_param('ii', $postid, $userid);
+        return $stmt->execute();
+    } else {
+        // If the user has already liked the post, remove the like
+        $stmt = $conn->prepare("DELETE FROM post_likes WHERE postid = ? AND userid = ?");
+        $stmt->bind_param('ii', $postid, $userid);
+        return $stmt->execute();
+    }
+}
+
+// Function to get the number of likes for a post
+function getLikes($postid, $conn) {
+    $stmt = $conn->prepare("SELECT COUNT(*) as like_count FROM post_likes WHERE postid = ?");
+    $stmt->bind_param('i', $postid);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    return $row['like_count'];
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['title']) && isset($_POST['body'])) {
     $title = $_POST['title'];
     $body = $_POST['body'];
@@ -43,6 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_postid'])) {
     $userid = $_SESSION['userid'];
     if (!deletePost($postid, $userid, $conn)) {
         die("Error deleting post: " . $conn->error);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['like_postid'])) {
+    $postid = $_POST['like_postid'];
+    $userid = $_SESSION['userid'];
+    if (!toggleLike($postid, $userid, $conn)) {
+        echo "Error toggling like: " . $conn->error;
     }
 }
 
@@ -84,7 +123,8 @@ $posts = getPosts($conn);
         }
 
         a {
-            color: #007BFF;
+            color
+            : #007BFF;
             text-decoration: none;
             display: inline-block;
             margin-bottom: 20px;
@@ -201,6 +241,19 @@ $posts = getPosts($conn);
                         <h3><a href="post.php?postid=<?php echo $post['postid']; ?>"><?php echo htmlspecialchars($post['title']); ?></a></h3>
                         <p><?php echo htmlspecialchars($post['body']); ?></p>
                         <p><small>Posted by <?php echo htmlspecialchars($post['username']); ?> on <?php echo $post['date_created']; ?></small></p>
+                        <p><small>Likes: <?php echo getLikes($post['postid'], $conn); ?></small></p>
+                        <form action="" method="post">
+                            <input type="hidden" name="like_postid" value="<?php echo $post['postid']; ?>">
+                            <button type="submit">
+                                <?php
+                                $stmt = $conn->prepare("SELECT * FROM post_likes WHERE postid = ? AND userid = ?");
+                                $stmt->bind_param('ii', $post['postid'], $_SESSION['userid']);
+                                $stmt->execute();
+                                $result = $stmt->get_result();
+                                echo ($result->num_rows == 0) ? 'Like' : 'Unlike';
+                                ?>
+                            </button>
+                        </form>
                         <?php if ($post['userid'] == $_SESSION['userid']): ?>
                             <form action="" method="post">
                                 <input type="hidden" name="delete_postid" value="<?php echo $post['postid']; ?>">
