@@ -41,11 +41,25 @@ function getComments($postid, $conn) {
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
+function deleteComment($commentid, $userid, $conn) {
+    $stmt = $conn->prepare("DELETE FROM comments WHERE id = ? AND userid = ?");
+    $stmt->bind_param('ii', $commentid, $userid);
+    return $stmt->execute();
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['comment_body'])) {
     $body = $_POST['comment_body'];
     $userid = $_SESSION['userid'];
     if (!insertComment($body, $userid, $postid, $conn)) {
         die("Error inserting comment: " . $conn->error);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_commentid'])) {
+    $commentid = $_POST['delete_commentid'];
+    $userid = $_SESSION['userid'];
+    if (!deleteComment($commentid, $userid, $conn)) {
+        die("Error deleting comment: " . $conn->error);
     }
 }
 
@@ -148,6 +162,7 @@ $comments = getComments($postid, $conn);
             padding: 15px;
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
 
         li p {
@@ -158,34 +173,57 @@ $comments = getComments($postid, $conn);
         li small {
             color: #666;
         }
+
+        /* Updated selector for the delete button */
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #dc3545;
+            color: #fff;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1><?php echo htmlspecialchars($post['title']); ?></h1>
-        <p><?php echo htmlspecialchars($post['body']); ?></p>
-        <p><small>Posted by <?php echo htmlspecialchars($post['username']); ?> on <?php echo $post['date_created']; ?></small></p>
-        <a href="homepage.php">Back to Homepage</a>
+<div class="container">
+    <h1><?php echo htmlspecialchars($post['title']); ?></h1>
+    <p><?php echo htmlspecialchars($post['body']); ?></p>
+    <p><small>Posted by <?php echo htmlspecialchars($post['username']); ?> on <?php echo $post['date_created']; ?></small></p>
+    <a href="homepage.php">Back to Homepage</a>
 
-        <h2>Comments</h2>
-        <form action="" method="post">
-            <label for="comment_body">Add a comment:</label>
-            <textarea id="comment_body" name="comment_body" required></textarea>
-            <input type="submit" value="Post Comment">
-        </form>
+    <h2>Comments</h2>
+    <form action="" method="post">
+        <label for="comment_body">Add a comment:</label>
+        <textarea id="comment_body" name="comment_body" required></textarea>
+        <input type="submit" value="Post Comment">
+    </form>
 
-        <?php if (count($comments) > 0): ?>
-            <ul>
-                <?php foreach ($comments as $comment): ?>
-                    <li>
-                        <p><?php echo htmlspecialchars($comment['body']); ?></p>
-                        <p><small>Commented by <?php echo htmlspecialchars($comment['username']); ?></small></p>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        <?php else: ?>
-            <p>No comments yet. Be the first to comment!</p>
-        <?php endif; ?>
-    </div>
+    <?php if (count($comments) > 0): ?>
+        <ul>
+            <?php foreach ($comments as $comment): ?>
+                <li>
+                    <p><?php echo htmlspecialchars($comment['body']); ?></p>
+                    <p><small>Commented by <?php echo htmlspecialchars($comment['username']); ?></small></p>
+                    <?php if ($comment['userid'] == $_SESSION['userid']): ?>
+                        <form action="" method="post">
+                            <input type="hidden" name="delete_commentid" value="<?php echo $comment['id']; ?>">
+                            <button class="delete-btn" type="submit">Delete</button>
+                        </form>
+                    <?php endif; ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php else: ?>
+        <p>No comments yet. Be the first to comment!</p>
+    <?php endif; ?>
+</div>
 </body>
 </html>

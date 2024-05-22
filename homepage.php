@@ -23,12 +23,26 @@ function getPosts($conn) {
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
+function deletePost($postid, $userid, $conn) {
+    $stmt = $conn->prepare("DELETE FROM post WHERE postid = ? AND userid = ?");
+    $stmt->bind_param('ii', $postid, $userid);
+    return $stmt->execute();
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['title']) && isset($_POST['body'])) {
     $title = $_POST['title'];
     $body = $_POST['body'];
     $userid = $_SESSION['userid'];
     if (!insertPost($title, $body, $userid, $conn)) {
         die("Error inserting post: " . $conn->error);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_postid'])) {
+    $postid = $_POST['delete_postid'];
+    $userid = $_SESSION['userid'];
+    if (!deletePost($postid, $userid, $conn)) {
+        die("Error deleting post: " . $conn->error);
     }
 }
 
@@ -131,6 +145,7 @@ $posts = getPosts($conn);
             padding: 15px;
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
 
         li h3 {
@@ -145,6 +160,22 @@ $posts = getPosts($conn);
 
         li small {
             color: #666;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #dc3545;
+            color: #fff;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
         }
     </style>
 </head>
@@ -170,6 +201,12 @@ $posts = getPosts($conn);
                         <h3><a href="post.php?postid=<?php echo $post['postid']; ?>"><?php echo htmlspecialchars($post['title']); ?></a></h3>
                         <p><?php echo htmlspecialchars($post['body']); ?></p>
                         <p><small>Posted by <?php echo htmlspecialchars($post['username']); ?> on <?php echo $post['date_created']; ?></small></p>
+                        <?php if ($post['userid'] == $_SESSION['userid']): ?>
+                            <form action="" method="post">
+                                <input type="hidden" name="delete_postid" value="<?php echo $post['postid']; ?>">
+                                <button class="delete-btn" type="submit">Delete</button>
+                            </form>
+                        <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
             </ul>
